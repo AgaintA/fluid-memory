@@ -77,7 +77,7 @@ $$ Score = (相似度 \times e^{-\lambda \times t}) + \alpha \times \log(1 + N) 
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yourusername/fluid-memory.git
+git clone https://github.com/AgaintA/fluid-memory.git
 cd fluid-memory
 
 # 安装依赖
@@ -146,4 +146,4 @@ MIT License - see [LICENSE](./LICENSE) file.
 
 ---
 
-**Made with 💕 by Aga & OpenClaw**
+**Made with 💕 by Aga & Rin**
