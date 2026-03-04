@@ -10,7 +10,7 @@ import subprocess
 PYTHON_PATH = r"C:\Users\41546\miniconda3\python.exe"
 SCRIPT_PATH = os.path.join(os.path.dirname(__file__), "fluid_skill.py")
 
-def execute(action, content="", query=""):
+def execute(action, content="", query="", conversation=""):
     cmd = [PYTHON_PATH, SCRIPT_PATH, action]
     
     if action == "remember" and content:
@@ -19,6 +19,8 @@ def execute(action, content="", query=""):
         cmd.extend(["--query", query])
     elif action == "forget" and content:
         cmd.extend(["--content", content])
+    elif action in ["summarize", "increment_summarize"] and conversation:
+        cmd.extend(["--conversation", conversation])
     
     result = subprocess.run(cmd, capture_output=True, text=True)
     return result.stdout.strip()
@@ -31,6 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("action")
     parser.add_argument("--content", default="")
     parser.add_argument("--query", default="")
+    parser.add_argument("--conversation", default="")
     args = parser.parse_args()
     
-    print(execute(args.action, args.content, args.query))
+    print(execute(args.action, args.content, args.query, args.conversation))

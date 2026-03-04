@@ -10,6 +10,7 @@
 
 ## 🌟 特性
 
+- **🧠 自动学习**: 每次对话自动记录（可选启用）
 - **🔄 动态遗忘**: 不是所有记忆都要永远记住。权重低的记忆会被自动遗忘。
 - **⚡ 语义理解**: 基于 ChromaDB 向量检索，理解"饮料"="可乐"。
 - **💪 强化机制**: 被检索次数越多的记忆，越难被遗忘。
@@ -86,7 +87,24 @@ pip install -r requirements.txt
 
 ### 使用
 
-#### 1. 植入记忆
+#### 配置文件 (config.yaml)
+
+```yaml
+decay_rate: 0.05   # 遗忘速度
+boost_factor: 0.2  # 强化力度
+auto_learn: true   # 自动学习模式：每次检索时自动记录对话
+summarize_threshold: 3  # 多少轮对话后自动总结
+```
+
+#### 4. 多轮对话总结
+
+```bash
+python fluid_skill.py summarize --conversation "用户说xxx | 我回复xxx | 用户说xxx"
+```
+
+系统会自动提取：偏好、决定、待办、学习内容，然后存入记忆。
+
+#### 5. 遗忘记忆
 
 ```bash
 python fluid_skill.py remember --content "用户喜欢喝可乐"

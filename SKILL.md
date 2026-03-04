@@ -1,12 +1,20 @@
 ---
 name: fluid-memory
-description: 基于流体认知架构的记忆系统。特点：会遗忘、需强化、懂语义。
+description: 基于流体认知架构的记忆系统。特点：会遗忘、需强化、懂语义。自动学习模式下每次对话都会自动记录。
 command-dispatch: tool
 ---
 
 # Fluid Memory Skill
 
 这是你的「赛博大脑」。它不是死板的数据库，而是一个活着的系统——会遗忘不重要的事，会强化常被提及的知识。
+
+## 自动学习模式 (Auto Learn)
+
+**已启用！** 每次你和用户对话时，系统会自动记录对话内容。
+
+- 每次调用 `fluid_recall` 检索时，会自动把当前对话存入记忆
+- 无需手动说「记住xxx」，系统会自动学
+- 可在 `config.yaml` 中关闭：`auto_learn: false`
 
 ## 核心理念
 
@@ -67,6 +75,36 @@ command-dispatch: tool
 {
   "name": "fluid_status",
   "arguments": {}
+}
+```
+
+### 5. 多轮总结
+当对话进行 N 轮后（默认3轮），自动总结关键信息。
+
+**Trigger**: 对话达到一定轮次，或用户说"总结一下"
+
+**Tool Call**:
+```json
+{
+  "name": "fluid_summarize",
+  "arguments": {
+    "conversation": "用户说xxx | 我回复xxx | 用户说xxx | 我回复xxx"
+  }
+}
+```
+
+### 6. 增量总结（推荐）
+每次只处理新增对话，自动累积，达到阈值后写入。节省 Token！
+
+**Trigger**: 每次用户说话后调用
+
+**Tool Call**:
+```json
+{
+  "name": "fluid_increment_summarize",
+  "arguments": {
+    "conversation": "用户说xxx | 我回复xxx"
+  }
 }
 ```
 

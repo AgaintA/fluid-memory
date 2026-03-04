@@ -16,6 +16,22 @@ except ImportError:
 # 配置路径
 WORKSPACE_ROOT = os.path.expanduser(r"~/.openclaw/workspace")
 CHROMA_PATH = os.path.join(WORKSPACE_ROOT, r"database\chroma_store")
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.yaml")
+
+def load_config():
+    """加载配置"""
+    import yaml
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f)
+    return {}
+
+CONFIG = load_config()
+AUTO_LEARN = CONFIG.get('auto_learn', False)
+SUMMARY_THRESHOLD = CONFIG.get('summarize_threshold', 3)
+
+# 增量总结缓冲区文件
+BUFFER_FILE = os.path.join(WORKSPACE_ROOT, r"database\summary_buffer.json")
 
 class FluidMemorySkill:
     def __init__(self):
@@ -83,6 +99,10 @@ class FluidMemorySkill:
         """唤起记忆 (Vector + Fluid Logic)"""
         if not self.use_vector:
             return "[ERROR] 缺少 Chroma 支持，无法进行语义检索。"
+
+        # 🚀 自动学习模式：每次检索时自动记录对话
+        if AUTO_LEARN:
+            self.remember(f"[对话] {query}")
 
         try:
             # 1. 粗召回：让 Chroma 找最像的 Top 10 (活跃记忆)
@@ -184,11 +204,129 @@ class FluidMemorySkill:
         count = self.collection.count()
         return json.dumps({"total_vectors": count, "backend": "ChromaDB"})
 
+    def summarize(self, conversation):
+        """多轮对话总结 - 提取关键信息并存入记忆"""
+        import json
+        
+        # 调用 LLM 提取关键信息
+        # 这里为了简化，先用规则提取。实际可以用 LLM API。
+        lines = conversation.split("|")
+        
+        key_info = {
+            "preferences": [],
+            "decisions": [],
+            "todos": [],
+            "learning": []
+        }
+        
+        # 简单关键词匹配（后续可以换成 LLM 调用）
+        keywords = {
+            "preferences": ["喜欢", "爱", "讨厌", "不喜欢", "偏好"],
+            "decisions": ["决定", "好了", "可以", "就这样"],
+            "todos": ["要", "记得", "待办", "下次"],
+            "learning": ["学会", "学到", "知道", "了解"]
+        }
+        
+        for line in lines:
+            for pref in keywords["preferences"]:
+                if pref in line:
+                    key_info["preferences"].append(line.strip())
+            for dec in keywords["decisions"]:
+                if dec in line:
+                    key_info["decisions"].append(line.strip())
+            for todo in keywords["todos"]:
+                if todo in line:
+                    key_info["todos"].append(line.strip())
+            for learn in keywords["learning"]:
+                if learn in line:
+                    key_info["learning"].append(line.strip())
+        
+        # 去重
+        for k in key_info:
+            key_info[k] = list(set(key_info[k]))[:5]  # 最多5条
+        
+        # 存入记忆
+        summary_text = f"[总结] {json.dumps(key_info, ensure_ascii=False)}"
+        result = self.remember(summary_text)
+        
+        return json.dumps({
+            "extracted": key_info,
+            "stored": result
+        }, ensure_ascii=False)
+
+    def _load_buffer(self):
+        """加载总结缓冲区"""
+        if os.path.exists(BUFFER_FILE):
+            try:
+                with open(BUFFER_FILE, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return data.get('summary', ''), data.get('round_count', 0)
+            except:
+                pass
+        return '', 0
+
+    def _save_buffer(self, summary, round_count):
+        """保存总结缓冲区"""
+        os.makedirs(os.path.dirname(BUFFER_FILE), exist_ok=True)
+        with open(BUFFER_FILE, 'w', encoding='utf-8') as f:
+            json.dump({'summary': summary, 'round_count': round_count}, f, ensure_ascii=False)
+
+    def increment_summarize(self, new_conversation):
+        """
+        增量总结 - 每次只处理新增对话
+        流程：加载上次总结 → 合并新对话 → 写入ChromaDB → 清空缓冲区
+        """
+        # 1. 加载上次的总结
+        last_summary, round_count = self._load_buffer()
+        
+        # 2. 构建输入：上次总结 + 新对话
+        if last_summary:
+            input_text = f"上次总结：{last_summary}\n\n新增对话：{new_conversation}\n\n请提炼关键事实，保持上下文连贯，输出一句话总结。"
+        else:
+            input_text = f"对话：{new_conversation}\n\n请提炼关键事实，输出一句话总结。"
+        
+        # 3. 简单规则提取（后续可换 LLM）
+        # 这里用关键词提取代替 LLM
+        lines = new_conversation.split("|")
+        facts = []
+        for line in lines:
+            line = line.strip()
+            if any(k in line for k in ["喜欢", "讨厌", "决定", "想", "要", "NSFW"]):
+                facts.append(line)
+        
+        if last_summary:
+            new_summary = last_summary + " + " + " | ".join(facts) if facts else last_summary
+        else:
+            new_summary = " | ".join(facts) if facts else "暂无关键信息"
+        
+        # 4. 达到阈值，写入 ChromaDB
+        new_round_count = round_count + 1
+        if new_round_count >= SUMMARY_THRESHOLD:
+            # 写入记忆
+            result = self.remember(f"[增量总结] {new_summary}")
+            # 清空缓冲区
+            self._save_buffer('', 0)
+            return json.dumps({
+                "status": "stored",
+                "summary": new_summary,
+                "rounds": new_round_count,
+                "result": result
+            }, ensure_ascii=False)
+        else:
+            # 存入缓冲区，等待下次
+            self._save_buffer(new_summary, new_round_count)
+            return json.dumps({
+                "status": "buffering",
+                "current_summary": new_summary,
+                "rounds": f"{new_round_count}/{SUMMARY_THRESHOLD}"
+            }, ensure_ascii=False)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=["remember", "recall", "forget", "status"])
+    parser.add_argument("action", choices=["remember", "recall", "forget", "status", "summarize", "increment_summarize"])
     parser.add_argument("--content", help="Content")
     parser.add_argument("--query", help="Query")
+    parser.add_argument("--conversation", help="Multi-round conversation for summarize")
     
     args = parser.parse_args()
     skill = FluidMemorySkill()
@@ -201,3 +339,7 @@ if __name__ == "__main__":
         print(skill.forget(args.content))
     elif args.action == "status":
         print(skill.status())
+    elif args.action == "summarize" and args.conversation:
+        print(skill.summarize(args.conversation))
+    elif args.action == "increment_summarize" and args.conversation:
+        print(skill.increment_summarize(args.conversation))
