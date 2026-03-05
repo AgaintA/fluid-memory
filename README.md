@@ -1,8 +1,6 @@
 # 🧠 Fluid Memory
 
-> 流体认知记忆架构 - 你的赛博大脑
-
-Inspired by 艾宾浩斯遗忘曲线 + OpenClaw
+> 基于艾宾浩斯遗忘曲线和访问频率的衰减模型设计的遗忘和归档机制，完全依赖 OpenClaw 原生记忆系统的拟人化流体记忆系统
 
 ---
 
@@ -146,6 +144,19 @@ fluid-memory/
         ├── HOOK.md
         └── handler.js
 ```
+
+---
+
+## ⚠️ 隐私声明
+
+- **存储位置**: 所有数据存储在本地 `~/.openclaw/workspace/database/`
+- **存储格式**: 明文存储（无加密）
+- **文件列表**:
+  - `chroma_store/` - 向量数据库
+  - `conversation_log.txt` - 对话缓存
+  - `summary_buffer.json` - 摘要缓存
+
+**风险**: 如果多人共用一台电脑，建议加密磁盘或定期清理。数据无云端同步，安全性取决于本地系统。
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: fluid-memory
-description: 基于流体认知架构的记忆系统。特点：会遗忘、需强化、懂语义。支持Hook自动同步。
+description: 基于艾宾浩斯遗忘曲线和访问频率的衰减模型设计的遗忘和归档机制，完全依赖openclaw原生记忆系统的拟人化流体记忆系统
 command-dispatch: tool
 metadata:
   {
@@ -98,6 +98,12 @@ metadata:
 ```bash
 python wrapper.py remember --content "..."
 ```
+
+## 隐私
+
+- 数据存储在本地 `~/.openclaw/workspace/database/`
+- 明文存储（无加密）
+- 无云端同步
 
 ## 最佳实践
 
