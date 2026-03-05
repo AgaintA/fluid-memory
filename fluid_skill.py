@@ -27,8 +27,6 @@ def load_config():
     return {}
 
 CONFIG = load_config()
-AUTO_LEARN = CONFIG.get('auto_learn', False)
-SUMMARY_THRESHOLD = CONFIG.get('summarize_threshold', 3)
 
 # 增量总结缓冲区文件
 BUFFER_FILE = os.path.join(WORKSPACE_ROOT, r"database\summary_buffer.json")
@@ -135,9 +133,6 @@ class FluidMemorySkill:
             
             # 计算最终得分
             final_score = self._calculate_score(sim, created_at, access_count)
-            
-            # Debug info
-            print(f"[DEBUG] Doc: {docs[i][:15]}... | Dist: {dist:.3f} -> Sim: {sim:.3f} | Score: {final_score:.3f}")
 
             if final_score > 0.05: # 降低阈值
                 scored_memories.append({

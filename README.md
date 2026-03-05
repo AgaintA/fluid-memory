@@ -8,220 +8,74 @@ Inspired by 艾宾浩斯遗忘曲线 + OpenClaw
 
 ## 特性
 
-- **🧠 自动学习**: 每次对话自动记录（需启用 Hook）
+- **🤝 原生联动**: 依赖 OpenClaw 原生 memory flush 触发
 - **🔄 动态遗忘**: 权重低的记忆会被自动淡化
 - **⚡ 语义理解**: 基于 ChromaDB 向量检索
 - **💪 强化机制**: 被检索次数越多的记忆，越难被遗忘
-- **🔌 OpenClaw Ready**: 开箱即用的 OpenClaw Skill + Hook
-- **🤝 原生互补**: 与 OpenClaw 原生 Memory flush 联动工作
+- **🔌 OpenClaw Ready**: 开箱即用的 OpenClaw Skill
+
+---
+
+## 工作原理
+
+### 架构
+
+```
+用户对话 → Hook 记录到临时文件 → OpenClaw 触发 flush → AI 调用 fluid_increment_summarize → 写入向量库
+```
+
+### 触发流程
+
+1. **Hook 记录**: 每次 AI 回复时，对话记录到 `conversation_log.txt`
+2. **原生 flush**: 当 OpenClaw 上下文快满时，触发 memory flush
+3. **AI 响应**: AI 收到提醒，同步调用 `fluid_increment_summarize`
+4. **向量存储**: 对话摘要写入 ChromaDB 向量库
 
 ---
 
 ## 与 OpenClaw 原生系统互补
-
-### 工作流程
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        用户对话                                  │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-              ┌───────────────┴───────────────┐
-              ▼                               ▼
-┌─────────────────────────┐     ┌─────────────────────────┐
-│   OpenClaw 原生系统     │     │      Fluid Memory       │
-├─────────────────────────┤     ├─────────────────────────┤
-│ 触发：上下文 87% 满     │     │ 触发：每 5 轮对话      │
-│ 存储：memory/*.md       │     │ 存储：ChromaDB 向量库   │
-│ 格式：Markdown 文本     │     │ 格式：语义向量          │
-│ 特点：完整记录          │     │ 特点：智能遗忘+语义理解 │
-└─────────────────────────┘     └─────────────────────────┘
-```
-
-### 互补关系
 
 | 维度 | 原生 Memory | Fluid Memory |
 |------|-------------|--------------|
 | **存储格式** | 文本 (Markdown) | 向量 (Embedding) |
 | **检索方式** | 关键词匹配 | 语义理解 |
 | **遗忘机制** | 永不清除 | 动态权重衰减 |
-| **触发频率** | 高 (87%上下文) | 低 (5轮) |
-| **数据粒度** | 完整对话 | 精简摘要 |
-
-### 联动规则
-
-当 OpenClaw 触发 memory flush 时，AI 会同步调用 `fluid_increment_summarize`，将近期对话的精华推入向量库。
-
----
-
-## 架构
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Fluid Memory Core                         │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐  │
-│  │   植入      │ ──> │   向量存储   │ ──> │   检索      │  │
-│  │  Remember  │     │  ChromaDB  │     │   Recall   │  │
-│  └─────────────┘     └─────────────┘     └─────────────┘  │
-│         │                                         │         │
-│         │            ┌─────────────┐              │         │
-│         └──────────>│  流体公式    │<─────────────┘         │
-│                      │   Score     │                       │
-│                      │ = Sim*Decay │                       │
-│                      │    + Boost  │                       │
-│                      └─────────────┘                       │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 遗忘机制
-
-Fluid Memory 有 3 种遗忘方式：
-
-### 1. 动态遗忘（检索时过滤）
-
-每次检索记忆时，用**流体评分公式**计算每条记忆的得分：
-
-```
-Score = (相似度 × e^(-λt)) + α × log(1+N)
-```
-
-| 参数 | 值 | 含义 |
-|------|-----|------|
-| λ (lambda) | 0.05 | 遗忘速度 |
-| t | - | 距离上次访问的天数 |
-| α (alpha) | 0.2 | 强化力度 |
-| N | - | 被访问(检索)的次数 |
-
-**低于 0.05 分的记忆会被过滤掉**，不返回给用户。
-
-### 2. 主动遗忘（手动）
-
-用户说「忘记xxx」时，调用 `forget` 命令，将记忆的 `status` 改为 `archive`（软删除）。
-
-### 3. 梦境守护（定时归档）
-
-运行 `maintenance.py` 或 `dream_daemon.py`，定时扫描所有活跃记忆：
-
-```
-base_score = e^(-λt) + α × log(1+N)
-```
-
-**低于 0.15 分的会自动归档**。
-
----
-
-## 核心算法
-
-### 流体评分公式
-
-```
-Score = (相似度 × e^(-λ × t)) + α × log(1 + N)
-```
-
-- λ (lambda): 遗忘速率
-- t: 距离上次访问的天数
-- α (alpha): 强化系数
-- N: 被访问(检索)的次数
-
----
-
-## 环境要求
-
-- Python 3.8+
-- chromadb
-- pyyaml
 
 ---
 
 ## 安装
 
-```bash
-# 克隆仓库
-git clone https://github.com/AgaintA/fluid-memory.git
-cd fluid-memory
-
-# 安装依赖
-pip install chromadb pyyaml
-```
-
----
-
-## 使用
-
-### 配置文件 (config.yaml)
-
-```yaml
-decay_rate: 0.05   # 遗忘速度
-boost_factor: 0.2  # 强化力度
-auto_learn: true   # 自动学习模式
-summarize_threshold: 3  # 多少轮对话后自动总结
-```
-
-### 命令行
-
-#### 1. 植入记忆
+### 1. 安装 Skill
 
 ```bash
-python fluid_skill.py remember --content "用户喜欢喝可乐"
+clawhub install fluid-memory
 ```
 
-#### 2. 检索记忆
+### 2. 安装 Hook
 
 ```bash
-python fluid_skill.py recall --query "用户喝什么"
-```
-
-#### 3. 遗忘记忆
-
-```bash
-python fluid_skill.py forget --content "青椒肉丝"
-```
-
-#### 4. 多轮对话总结
-
-```bash
-python fluid_skill.py summarize --conversation "用户说xxx | 我回复xxx | 用户说xxx"
-```
-
-#### 5. 增量总结（推荐）
-
-```bash
-python fluid_skill.py increment_summarize --conversation "用户说xxx | 我回复xxx"
-```
-
-#### 6. 查看状态
-
-```bash
-python fluid_skill.py status
-```
-
----
-
-## Hook 自动同步
-
-支持 OpenClaw Hook，监听 `message:sent` 事件自动记录对话。
-
-### 安装 Hook
-
-```bash
-# 复制 hook 到 OpenClaw hooks 目录
 cp -r hooks/fluid-memory-sync ~/.openclaw/hooks/
 ```
 
-### 配置
+### 3. 配置 OpenClaw
 
-在 `openclaw.json` 中启用：
+在 `openclaw.json` 中启用 Hook 和调整触发频率：
 
-```json
+```json5
 {
   "hooks": {
     "internal": {
       "entries": {
-        "fluid-memory-sync": {
-          "enabled": true
+        "fluid-memory-sync": { "enabled": true }
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "compaction": {
+        "memoryFlush": {
+          "enabled": true,
+          "softThresholdTokens": 50000
         }
       }
     }
@@ -229,22 +83,66 @@ cp -r hooks/fluid-memory-sync ~/.openclaw/hooks/
 }
 ```
 
+### 触发时机
+
+> 触发 = contextWindow - reserveTokensFloor (20000) - softThresholdTokens
+
+例如 Minimax 195K：195K - 20K - 50K = 125K（约 64% 满时触发）
+
 ---
 
-## 项目结构
+## 使用
+
+### 手动记录
+
+```bash
+python fluid_skill.py remember --content "用户喜欢喝可乐"
+python fluid_skill.py recall --query "用户喝什么"
+python fluid_skill.py forget --content "青椒肉丝"
+python fluid_skill.py status
+```
+
+---
+
+## 遗忘机制
+
+### 1. 动态遗忘（检索时过滤）
+
+```
+Score = (相似度 × e^(-λt)) + α × log(1+N)
+```
+
+- λ = 遗忘速度 (0.05)
+- t = 距离上次访问的天数
+- α = 强化力度 (0.2)
+- N = 被访问次数
+
+分数 < 0.05 的记忆不返回。
+
+### 2. 主动遗忘
+
+调用 `forget` 命令归档记忆。
+
+### 3. 梦境守护
+
+运行 `maintenance.py`，归档超过 120 天的低权重记忆。
+
+---
+
+## 文件结构
 
 ```
 fluid-memory/
 ├── SKILL.md                    # OpenClaw Skill 定义
 ├── fluid_skill.py              # 核心引擎
 ├── maintenance.py              # 梦境整理脚本
-├── dream_daemon.py             # 定时守护进程
-├── wrapper.py                  # CLI 封装
+├── dream_daemon.py            # 定时守护进程
+├── wrapper.py                 # CLI 封装
 ├── config.yaml                # 配置文件
 ├── LICENSE                    # MIT 许可证
 ├── README.md                  # 本文件
 └── hooks/
-    └── fluid-memory-sync/      # 自动同步 Hook
+    └── fluid-memory-sync/     # 自动同步 Hook
         ├── HOOK.md
         └── handler.js
 ```
@@ -253,16 +151,4 @@ fluid-memory/
 
 ## 许可证
 
-MIT License - see [LICENSE](./LICENSE) file.
-
----
-
-## 致谢
-
-- [ChromaDB](https://www.trychroma.com/) - 向量存储
-- [OpenClaw](https://github.com/openclaw/openclaw) - AI Agent 框架
-- 艾宾浩斯遗忘曲线 - 理论基石
-
----
-
-Made with 💕 by Aga
+MIT License

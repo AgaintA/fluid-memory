@@ -19,11 +19,11 @@ metadata:
 
 ## 自动学习模式 (Auto Learn)
 
-**通过 Hook 自动触发！** 每次 AI 回复消息后，系统会自动记录对话。
+**通过 OpenClaw 原生 flush 触发！** 每次 OpenClaw 触发 memory flush 时，AI 会同步调用 fluid-memory 记录对话。
 
-- 依赖 `fluid-memory-sync` Hook（监听 message:sent 事件）
-- 无需手动说「记住xxx」，系统会自动累积
-- 可在 `config.yaml` 中关闭：`auto_learn: false`
+- 依赖 OpenClaw 原生 compaction 机制（配置 `softThresholdTokens` 控制频率）
+- 需在 `config.yaml` 中设置 `auto_learn: true` 启用
+- 5轮自动存已禁用，改为完全依赖原生 flush
 
 ## 遗忘机制
 
