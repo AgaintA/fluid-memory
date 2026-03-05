@@ -2,6 +2,15 @@
 name: fluid-memory
 description: 基于流体认知架构的记忆系统。特点：会遗忘、需强化、懂语义。支持Hook自动同步。
 command-dispatch: tool
+metadata:
+  {
+    "openclaw": {
+      "requires": {
+        "bins": ["python"],
+        "python_packages": ["chromadb", "pyyaml"]
+      }
+    }
+  }
 ---
 
 # Fluid Memory Skill

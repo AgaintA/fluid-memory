@@ -25,13 +25,11 @@ def get_python_path():
         if os.path.exists(conda_python):
             return conda_python
     
-    # 3. 尝试常见 conda 安装位置
+    # 3. 尝试常见 conda 安装位置 (用户目录)
     home = os.path.expanduser('~')
     common_paths = [
         os.path.join(home, 'miniconda3', 'python.exe'),
         os.path.join(home, 'anaconda3', 'python.exe'),
-        r"C:\Users\41546\miniconda3\python.exe",
-        r"C:\ProgramData\miniconda3\python.exe",
     ]
     for p in common_paths:
         if os.path.exists(p):
@@ -45,10 +43,10 @@ def get_python_path():
     # 5. 尝试 py launcher (Windows 内置)
     py_cmd = shutil.which('py')
     if py_cmd:
-        return f'"{py_cmd}" -3'
+        return py_cmd
     
-    # 6. 回退到默认路径
-    return r"C:\Users\41546\miniconda3\python.exe"
+    # 6. 找不到则抛出异常
+    raise RuntimeError("未找到 Python。请确保已安装 Python 或在 PATH 中。")
 
 # 动态获取 Python 路径
 PYTHON_PATH = get_python_path()

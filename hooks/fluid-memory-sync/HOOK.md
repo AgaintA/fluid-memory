@@ -1,13 +1,16 @@
 ---
 name: fluid-memory-sync
 description: "Automatically sync conversation to Fluid Memory when messages are sent"
-homepage: https://github.com/yourusername/fluid-memory
+homepage: https://github.com/AgaintA/fluid-memory
 metadata:
   {
     "openclaw": {
       "emoji": "🧠",
       "events": ["message:sent"],
-      "requires": { "bins": ["node"] }
+      "requires": {
+        "bins": ["python"],
+        "skills": ["fluid-memory"]
+      }
     }
   }
 ---
