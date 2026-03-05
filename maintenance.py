@@ -86,5 +86,32 @@ def perform_nightly_consolidation():
 
     print(f"[DONE] 整理完成。共归档 {archived_count} 条记忆。")
 
+    # 2. 硬删除逻辑 (Hard Delete)
+    # 查找所有 archive 状态且归档超过 120 天的记忆
+    archive_results = collection.get(
+        where={"status": "archive"},
+        include=["metadatas"]
+    )
+    
+    hard_delete_ids = []
+    HARD_DELETE_DAYS = 120
+    
+    if archive_results['ids']:
+        ids = archive_results['ids']
+        metas = archive_results['metadatas']
+        
+        for i, mem_id in enumerate(ids):
+            meta = metas[i]
+            last_accessed = meta.get('last_accessed', now)
+            days_inactive = (now - last_accessed) / 86400
+            
+            if days_inactive > HARD_DELETE_DAYS:
+                hard_delete_ids.append(mem_id)
+    
+    if hard_delete_ids:
+        print(f"[CLEANUP] 发现 {len(hard_delete_ids)} 条长期归档记忆，正在物理删除...")
+        collection.delete(ids=hard_delete_ids)
+        print(f"[DONE] 物理删除完成。释放空间。")
+
 if __name__ == "__main__":
     perform_nightly_consolidation()
