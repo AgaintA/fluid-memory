@@ -5,9 +5,53 @@ Fluid Memory Skill - OpenClaw Interface
 import sys
 import os
 import subprocess
+import shutil
 
-# Conda Python 路径 (因为需要 chromadb)
-PYTHON_PATH = r"C:\Users\41546\miniconda3\python.exe"
+def get_python_path():
+    """动态查找 Python 路径"""
+    import os
+    
+    # 1. 尝试 CONDA_PREFIX 环境变量
+    conda_prefix = os.environ.get('CONDA_PREFIX', '')
+    if conda_prefix:
+        conda_python = os.path.join(conda_prefix, 'python.exe')
+        if os.path.exists(conda_python):
+            return conda_python
+    
+    # 2. 尝试 CONDA 环境变量
+    conda = os.environ.get('CONDA', '')
+    if conda:
+        conda_python = os.path.join(conda, 'python.exe')
+        if os.path.exists(conda_python):
+            return conda_python
+    
+    # 3. 尝试常见 conda 安装位置
+    home = os.path.expanduser('~')
+    common_paths = [
+        os.path.join(home, 'miniconda3', 'python.exe'),
+        os.path.join(home, 'anaconda3', 'python.exe'),
+        r"C:\Users\41546\miniconda3\python.exe",
+        r"C:\ProgramData\miniconda3\python.exe",
+    ]
+    for p in common_paths:
+        if os.path.exists(p):
+            return p
+    
+    # 4. 尝试系统 PATH 中的 python
+    python_cmd = shutil.which('python')
+    if python_cmd:
+        return python_cmd
+    
+    # 5. 尝试 py launcher (Windows 内置)
+    py_cmd = shutil.which('py')
+    if py_cmd:
+        return f'"{py_cmd}" -3'
+    
+    # 6. 回退到默认路径
+    return r"C:\Users\41546\miniconda3\python.exe"
+
+# 动态获取 Python 路径
+PYTHON_PATH = get_python_path()
 SCRIPT_PATH = os.path.join(os.path.dirname(__file__), "fluid_skill.py")
 
 def execute(action, content="", query="", conversation=""):
