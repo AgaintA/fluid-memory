@@ -1,6 +1,6 @@
 ---
 name: fluid-memory
-description: 基于流体认知架构的记忆系统。特点：会遗忘、需强化、懂语义。自动学习模式下每次对话都会自动记录。
+description: 基于流体认知架构的记忆系统。特点：会遗忘、需强化、懂语义。支持Hook自动同步。
 command-dispatch: tool
 ---
 
@@ -10,11 +10,17 @@ command-dispatch: tool
 
 ## 自动学习模式 (Auto Learn)
 
-**已启用！** 每次你和用户对话时，系统会自动记录对话内容。
+**通过 Hook 自动触发！** 每次 AI 回复消息后，系统会自动记录对话。
 
-- 每次调用 `fluid_recall` 检索时，会自动把当前对话存入记忆
-- 无需手动说「记住xxx」，系统会自动学
+- 依赖 `fluid-memory-sync` Hook（监听 message:sent 事件）
+- 无需手动说「记住xxx」，系统会自动累积
 - 可在 `config.yaml` 中关闭：`auto_learn: false`
+
+## 遗忘机制
+
+- **动态遗忘**：检索时分数 < 0.05 被过滤
+- **主动遗忘**：调用 `fluid_forget` 归档指定记忆
+- **梦境守护**：定时归档分数 < 0.15 的记忆
 
 ## 核心理念
 
