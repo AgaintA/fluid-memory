@@ -106,6 +106,23 @@ export default async function handler(event) {
   }
 
   try {
+    // 1. 先检查 Buffer 是否有残留（Session 切换时可能没 flush 完）
+    const statusResult = await runFluidSkill(["status"]);
+    let bufferHasContent = false;
+    
+    try {
+      const status = JSON.parse(statusResult);
+      if (status.buffer_rounds > 0) {
+        console.log("[fluid-memory-sync] 发现残留 Buffer，正在写入...");
+        // 用空的 conversation 触发一次写入
+        await runFluidSkill(["increment_summarize", "--conversation", "[Session恢复] 继续上次未完成的记忆"]);
+        console.log("[fluid-memory-sync] 残留 Buffer 已处理。");
+      }
+    } catch (e) {
+      // 解析失败不阻塞主流程
+    }
+    
+    // 2. 记录当前对话
     // Format: "用户说: xxx | 我说: yyy"
     const conversation = `用户说: ${event.content}`;
     

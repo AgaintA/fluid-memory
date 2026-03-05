@@ -203,7 +203,14 @@ class FluidMemorySkill:
     def status(self):
         if not self.use_vector: return "Mode: Keyword (No Chroma)"
         count = self.collection.count()
-        return json.dumps({"total_vectors": count, "backend": "ChromaDB"})
+        # 同时检查 Buffer 状态
+        summary, rounds = self._load_buffer()
+        return json.dumps({
+            "total_vectors": count, 
+            "backend": "ChromaDB",
+            "buffer_summary": summary,
+            "buffer_rounds": rounds
+        })
 
     def summarize(self, conversation):
         """多轮对话总结 - 提取关键信息并存入记忆"""
