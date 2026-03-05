@@ -1,6 +1,6 @@
 ---
 name: fluid-memory-sync
-description: "Automatically sync conversation to Fluid Memory when messages are sent"
+description: "记录对话到临时文件，等待 OpenClaw 原生 flush 触发"
 homepage: https://github.com/AgaintA/fluid-memory
 metadata:
   {
@@ -17,38 +17,31 @@ metadata:
 
 # Fluid Memory Sync Hook
 
-Automatically syncs conversation to Fluid Memory vector store when the AI sends a message.
+记录对话到临时文件，等待 OpenClaw 原生 flush 触发。
 
-## What It Does
+## 工作原理
 
-1. Listens for `message:sent` events (every time the AI replies)
-2. Extracts the conversation from the event context
-3. Calls `fluid_increment_summarize` to accumulate and store memory
-4. When threshold is reached (default 3 rounds), writes to ChromaDB
+1. 每次 `message:sent` 事件触发时，将对话追加到 `conversation_log.txt`
+2. 等待 OpenClaw 原生 memory flush 触发
+3. AI 收到 flush 提醒时，调用 `fluid_increment_summarize` 处理对话
 
-## Requirements
+## 依赖
 
-- Fluid Memory skill must be installed
-- Python with chromadb must be available
-- Configuration in `config.yaml`:
+- `fluid-memory` Skill
+- OpenClaw 原生 memory flush 机制
 
-```yaml
-summarize_threshold: 3  # rounds before writing to vector DB
-```
+## 禁用
 
-## Events
+如需禁用：
 
-- `message:sent`: Triggered after every AI response
-
-## How It Works
-
-```
-User message → AI responds → Hook fires → Update buffer →
-3 rounds reached → Write to ChromaDB → Clear buffer
-```
-
-## Disable
-
-```bash
-# Edit config or remove the hook directory
+```json
+{
+  "hooks": {
+    "internal": {
+      "entries": {
+        "fluid-memory-sync": { "enabled": false }
+      }
+    }
+  }
+}
 ```

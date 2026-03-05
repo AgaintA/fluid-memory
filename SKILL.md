@@ -22,8 +22,7 @@ metadata:
 **通过 OpenClaw 原生 flush 触发！** 每次 OpenClaw 触发 memory flush 时，AI 会同步调用 fluid-memory 记录对话。
 
 - 依赖 OpenClaw 原生 compaction 机制（配置 `softThresholdTokens` 控制频率）
-- 需在 `config.yaml` 中设置 `auto_learn: true` 启用
-- 5轮自动存已禁用，改为完全依赖原生 flush
+- 需在 OpenClaw 配置中启用 `memoryFlush`
 
 ## 遗忘机制
 
@@ -93,42 +92,11 @@ metadata:
 }
 ```
 
-### 5. 多轮总结
-当对话进行 N 轮后（默认3轮），自动总结关键信息。
-
-**Trigger**: 对话达到一定轮次，或用户说"总结一下"
-
-**Tool Call**:
-```json
-{
-  "name": "fluid_summarize",
-  "arguments": {
-    "conversation": "用户说xxx | 我回复xxx | 用户说xxx | 我回复xxx"
-  }
-}
-```
-
-### 6. 增量总结（推荐）
-每次只处理新增对话，自动累积，达到阈值后写入。节省 Token！
-
-**Trigger**: 每次用户说话后调用
-
-**Tool Call**:
-```json
-{
-  "name": "fluid_increment_summarize",
-  "arguments": {
-    "conversation": "用户说xxx | 我回复xxx"
-  }
-}
-```
-
 ## 内部实现 (供开发者参考)
 
 实际执行命令：
 ```bash
-# 使用 Conda 环境
-C:\Users\41546\miniconda3\python.exe wrapper.py remember --content "..."
+python wrapper.py remember --content "..."
 ```
 
 ## 最佳实践
